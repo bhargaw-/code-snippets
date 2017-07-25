@@ -1,0 +1,76 @@
+
+
+Liferay is a rich portal application which provides different ways to customize it.
+ In liferay there are so many tools/api s are integrated and we can plug more and also customize existing one as per our requirement.
+ Liferay also provide lots off JSON webservises to integrate it with different technology.
+ As we can create mobile apps/many other different type of integration using its webservices
+
+LigerayMob : https://play.google.com/store/apps/details?id=in.componence.liferaymob&hl=en
+
+In Liferay we have basically two ways to display data:
+
+       Using portlet, by this we can display data and using this way we have many configurations and customization
+       Using web content and template which is rendered dynamically at run times
+
+In web content we have option for structure template which use VM and alloy UI using that we just render data in a desired view.
+ Liferay also provides different JS object available on front end and even we can use liferay service util with the help of JS.
+ As it works in control panel>server Administration > Script
+
+// ### Javascript Sample ###
+ number = Packages.com.liferay.portal.service.UserLocalServiceUtil.getUsersCount();
+ out.println(number);  
+
+ 
+
+As angular JS provides many mechanism to services call and frontend task to do in easy way.
+ So, using angular JS with liferay we can achieve much functionality with basic Webcontent and angular JS only.
+
+ 
+
+Lets see some examples:
+ 1. We want to display the current logged in User’s full name on the page using WCM :
+
+ 
+
+<script src= "http://ajax.googleapis.com/ajax/libs/angularjs/1.5.8/angular.min.js"></script>
+ <div ng-app="myApp" ng-controller="userInfo"><button ng-click="getUserInfo()">Get user info</button>
+ <p>User's Name: <input ng-model="userName" type="text" /></p>
+ </div>
+ <script>
+ var app = angular.module('myApp', []);
+ app.controller('userInfo', ['$scope', '$window', function($scope, $window){
+     $scope.userName = "",
+     $scope.getUserInfo = function() {
+         $scope.userName = $window.Liferay.ThemeDisplay.getUserName();
+     };
+ }] );
+ </script>   
+
+ 
+
+So, this is very simple way to get angular js use, we can use this code in theme or as basic web content.
+ Now lets we use angularjs with liferay json ws to get the current user emailId
+
+ 
+
+<script src= "http://ajax.googleapis.com/ajax/libs/angularjs/1.5.8/angular.min.js"></script>
+ <div ng-app="myApp" ng-controller="personCtrl">
+ <button class="btn" ng-click="userData()">Get user email</button>
+ <p>User Email: <input ng-model="email" type="text" /></p>
+ </div>
+ <script>
+ var app = angular.module('myApp', []);
+ app.controller('personCtrl', ['$scope', '$window', function($scope, $window) {
+     $scope.userData = function() {
+         $window.Liferay.Service(
+           '/user/get-user-by-id',
+           {
+             userId: $window.Liferay.ThemeDisplay.getUserId()
+           },
+           function(obj) {
+             $scope.email = obj.emailAddress;
+           }
+         );
+     };
+ }]);
+ </script>
