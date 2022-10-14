@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>ATM Subledger Data Migration</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="./bootstrap.min.css">
+    <script src="./jquery.min.js"></script>
+    <script src="./bootstrap.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <h2> ECMS -> TECMS Data Migration</h2>
+    <ul class="nav nav-tabs">
+        <li>
+            <a data-toggle="tab" href="#menu1"
+               onclick="prepareHtml('Cash EOD Balance Migration', 'https://tecms-trane-db-sync.apps.test.na-7z.gap.jpmchase.net/weekly/cash-eod-balance/')">
+                Cash EOD Balance Migration
+            </a>
+        </li>
+        <li>
+            <a data-toggle="tab" href="#menu1"
+               onclick="prepareHtml('Deposit EOD Balance Migration','https://tecms-trane-db-sync.apps.test.na-7z.gap.jpmchase.net/weekly/deposit-eod-balance/')">
+                Deposit EOD Balance Migration
+            </a>
+        </li>
+        <li>
+            <a data-toggle="tab" href="#menu1"
+               onclick="prepareHtml('ATM Reject EOD Balance Migration','https://tecms-trane-db-sync.apps.test.na-7z.gap.jpmchase.net/weekly/atm-reject-eod-balance/')">
+                ATM Reject EOD Balance Migration
+            </a>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <div id="api-response"></div>
+        <div id="home" class="tab-pane fade in active">
+            <h3>Please select one of tabs above</h3>
+        </div>
+        <div id="menu1" class="tab-pane fade">
+            <h3 id='heading'>Menu 1</h3>
+            <div id='add-table'></div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    const START_DATE = new Date('2023-01-01');
+    const END_DATE = new Date('2023-05-31');
+    const DATE_RANGE = 7;
+    const apiResponse = document.getElementById('api-response');
+    const PENDING = 'PENDING';
+    const SUCCESS = 'SUCCESS';
+    const FAILURE = 'FAILURE';
+    const DATA_STORE = new Map();
+
+    window.onbeforeunload = function() {
+        return alert();
+    }
+
+    function prepareData(url) {
+        const PROCESSING_DATES = [];
+        let startDate = START_DATE;
+        let flag = true;
+        while (flag) {
+            let processDate = addDate(new Date(startDate), DATE_RANGE);
+            if (END_DATE.getTime() < processDate.getTime()) {
+                processDate = END_DATE;
+                flag = false;
+            }
+            const date1 = formatDate(startDate);
+            const date2 = formatDate(processDate);
+            const obj = {};
+            obj['startDate'] = date1;
+            obj['endDate'] = date2;
+            obj['status'] = PENDING;
+            obj['apiURL'] = prepareURL(url, date1, date2);
+            PROCESSING_DATES.push(obj);
+            startDate = addDate(new Date(processDate), 1);
+        }
+        return PROCESSING_DATES;
+    }
+
+    function prepareURL(url, startDate, endDate) {
+        const endpointURL = new URL(url);
+        endpointURL.searchParams.append("bnkNb", "");
+        endpointURL.searchParams.append("postDateFrom", startDate);
+        endpointURL.searchParams.append("postDateTo", endDate);
+        return endpointURL.href;
+    }
+
+    function prepareButton(url, index) {
+        return `
+            <button onclick = "apiCall('${url}', ${index})" class = 'bg-primary'>
+                Execute
+             </button>
+        `;
+    }
+
+    function prepareTable(tableData) {
+        const tableBody = tableData.map((value, index) => {
+            return `
+                    <tr>
+                        <th scope="row">${index + 1}</th>
+                        <td>${value.startDate}</td>
+                        <td>${value.endDate}</td>
+                        <td id = td-s-${index}>${value.status}</td>
+                        <td id = td-a-${index}>
+                            ${value.status === SUCCESS ? '' : prepareButton(value.apiURL, index)}
+                        </td>
+                    </tr>
+                `;
+        });
+        return `
+            <table class="table">
+            <thead>
+                  <tr>
+                    <td>Serial Number</td>
+                    <td>Start Date</td>
+                    <td>End Date</td>
+                    <td>Status</td>
+                    <td>Action</td>
+                  </tr>
+               </thead>
+                <tbody>
+                    ${tableBody.join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    function prepareHtml(title, url) {
+        apiResponse.innerHTML = '';
+        const heading = document.getElementById('heading');
+        heading.innerHTML = `${title}`;
+        const div = document.getElementById('add-table');
+        div.innerHTML = prepareTable(getItems(url));
+    }
+
+    function addDate(date, days) {
+        date.setDate(date.getDate() + days);
+        return date;
+    }
+
+    function formatDate(date) {
+        let day = date.getDate();
+        let month = date.getMonth() + 1;
+        let year = date.getFullYear();
+        if (month <= 9) {
+            month = `0${month}`;
+        }
+        if (day <= 9) {
+            day = `0${day}`;
+        }
+
+        return `${year}-${month}-${day}`;
+    }
+
+    function apiCall(url, counter) {
+        apiResponse.innerHTML = '';
+        alterButton(false);
+        console.log("API call is made to ", url);
+        fetch(url, {
+            method: 'GET',
+            mode: "cors",
+            cache: 'no-cache',
+            headers: {
+                Host: 'tecms-trane-db-sync.apps.test.na-7z.gap.jpmchase.net',
+                Accept: '*/*',
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'text/plain;charset=UTF-8',
+                'Connection': 'keep-alive'
+            }
+        }).then(response => {
+            console.log(response)
+            if (response.ok) {
+                console.log("API Call is successful. Response is : ", response);
+                apiResponse.innerHTML = `<p style = 'color:green;'> ${response.body} </p>`;
+                postProcessing(url, counter, SUCCESS);
+            }else {
+                const errorMessage = `API call failed. URI : ${url},   Response Status Code : ${response.status},   Reason : ${response.body}`;
+                throw new Error(errorMessage);
+            }
+        }).catch(reason => {
+            apiResponse.innerHTML = `<p style = 'color:red;'> ${reason} </p>`;
+            postProcessing(url, counter, FAILURE);
+            //postProcessing(url, counter, SUCCESS);
+        });
+    }
+
+    function alterButton(flag) {
+        const buttons = document.getElementsByTagName('button');
+        for (const button of buttons) {
+            if (flag){
+                button.removeAttribute('disabled');
+            }else{
+                button.setAttribute('disabled','disabled');
+            }
+        }
+    }
+
+    function postProcessing(url, counter, result) {
+        if (result === SUCCESS) {
+            document.getElementById(`td-a-${counter}`).innerHTML = '';
+        }
+        document.getElementById(`td-s-${counter}`).innerHTML = result;
+        const updatedItems = getItems(url).map((value, index) => {
+            if (index === counter) {
+                value.status = result
+            }
+            return value;
+        })
+        const origin = url.split('?')[0];
+        DATA_STORE.delete(origin);
+        DATA_STORE.set(origin, updatedItems);
+        alterButton(true);
+    }
+
+    function getItems(url) {
+        let origin = url.split('?')[0];
+        let data = DATA_STORE.get(origin);
+        if (data === undefined || data === null) {
+            DATA_STORE.set(origin, prepareData(origin));
+            data = DATA_STORE.get(origin);
+        }
+        return data;
+    }
+
+    function alert() {
+        return  confirm("Do you wan to leave this page?");
+    }
+
+</script>
+</body>
+</html>
