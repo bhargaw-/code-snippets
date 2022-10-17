@@ -2,12 +2,17 @@
 <html lang="en">
 <head>
     <title>ATM Subledger Data Migration</title>
-    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="./bootstrap.min.css">
-    <script src="./jquery.min.js"></script>
-    <script src="./bootstrap.min.js"></script>
+	  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+	  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+	  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+<style>
+  .orange {color:orange;}
+  .green {color:green;}
+  .red {color:red;}
+</style>
 </head>
+
 <body>
 
 <div class="container">
@@ -15,20 +20,38 @@
     <ul class="nav nav-tabs">
         <li>
             <a data-toggle="tab" href="#menu1"
-               onclick="prepareHtml('Cash EOD Balance Migration', 'https://tecms-trane-db-sync.apps.test.na-7z.gap.jpmchase.net/weekly/cash-eod-balance/')">
+               onclick="prepareHtml('Cash EOD Balance Migration', 'https://jsonplaceholder.typicode.com/todos/1')">
                 Cash EOD Balance Migration
             </a>
         </li>
         <li>
             <a data-toggle="tab" href="#menu1"
-               onclick="prepareHtml('Deposit EOD Balance Migration','https://tecms-trane-db-sync.apps.test.na-7z.gap.jpmchase.net/weekly/deposit-eod-balance/')">
+               onclick="prepareHtml('Deposit EOD Balance Migration','https://jsonplaceholder.typicode.com/todos123/2')">
                 Deposit EOD Balance Migration
             </a>
         </li>
         <li>
             <a data-toggle="tab" href="#menu1"
-               onclick="prepareHtml('ATM Reject EOD Balance Migration','https://tecms-trane-db-sync.apps.test.na-7z.gap.jpmchase.net/weekly/atm-reject-eod-balance/')">
+               onclick="prepareHtml('ATM Reject EOD Balance Migration','https://jsonplaceholder.typicode.com/todos/3')">
                 ATM Reject EOD Balance Migration
+            </a>
+        </li>
+		<li>
+            <a data-toggle="tab" href="#menu2"
+               onclick="prepareHtml('ATM Reject EOD Balance Migration','https://jsonplaceholder.typicode.com/todos/3')">
+                ATM Reject EOD Balance Change Status
+            </a>
+        </li>
+		<li>
+            <a data-toggle="tab" href="#menu3"
+               onclick="prepareHtml('ATM Reject EOD Balance Migration','https://jsonplaceholder.typicode.com/todos/3')">
+                ATM Remaping
+            </a>
+        </li>
+		<li>
+            <a data-toggle="tab" href="#menu4"
+               onclick="prepareHtml('ATM Reject EOD Balance Migration','https://jsonplaceholder.typicode.com/todos/3')">
+                ATM Reject Mapping
             </a>
         </li>
     </ul>
@@ -42,6 +65,15 @@
             <h3 id='heading'>Menu 1</h3>
             <div id='add-table'></div>
         </div>
+		<div id="menu2" class="tab-pane fade">
+            <h3 id='heading'>Page need to be edited</h3>            
+        </div>
+		<div id="menu3" class="tab-pane fade">
+            <h3 id='heading'>Page need to be edited</h3>            
+        </div>
+		<div id="menu4" class="tab-pane fade">
+            <h3 id='heading'>Page need to be edited</h3>            
+        </div>
     </div>
 </div>
 <script type="text/javascript">
@@ -51,7 +83,7 @@
     const apiResponse = document.getElementById('api-response');
     const PENDING = 'PENDING';
     const SUCCESS = 'SUCCESS';
-    const FAILURE = 'FAILURE';
+    const FAILURE = 'FAILED';
     const DATA_STORE = new Map();
 
     window.onbeforeunload = function() {
@@ -73,7 +105,7 @@
             const obj = {};
             obj['startDate'] = date1;
             obj['endDate'] = date2;
-            obj['status'] = PENDING;
+            obj['status'] = prepareStatusMessage(PENDING, PENDING);
             obj['apiURL'] = prepareURL(url, date1, date2);
             PROCESSING_DATES.push(obj);
             startDate = addDate(new Date(processDate), 1);
@@ -91,7 +123,7 @@
 
     function prepareButton(url, index) {
         return `
-            <button onclick = "apiCall('${url}', ${index})" class = 'bg-primary'>
+            <button onclick = "apiCall('${url}', ${index})" class = 'btn btn-primary'>
                 Execute
              </button>
         `;
@@ -99,12 +131,13 @@
 
     function prepareTable(tableData) {
         const tableBody = tableData.map((value, index) => {
+			const clsNm = getClasName(value.status);
             return `
                     <tr>
                         <th scope="row">${index + 1}</th>
                         <td>${value.startDate}</td>
                         <td>${value.endDate}</td>
-                        <td id = td-s-${index}>${value.status}</td>
+                        <td id = td-s-${index} class='${clsNm}'>${value.status}</td>
                         <td id = td-a-${index}>
                             ${value.status === SUCCESS ? '' : prepareButton(value.apiURL, index)}
                         </td>
@@ -168,45 +201,45 @@
                 Host: 'tecms-trane-db-sync.apps.test.na-7z.gap.jpmchase.net',
                 Accept: '*/*',
                 'Access-Control-Allow-Origin': '*',
-                'Content-Type': 'text/plain;charset=UTF-8',
+                'Content-Type': 'application/json',
                 'Connection': 'keep-alive'
             }
-        }).then(response => {
-            console.log(response)
-            if (response.ok) {
-                console.log("API Call is successful. Response is : ", response);
-                apiResponse.innerHTML = `<p style = 'color:green;'> ${response.body} </p>`;
-                postProcessing(url, counter, SUCCESS);
-            }else {
-                const errorMessage = `API call failed. URI : ${url},   Response Status Code : ${response.status},   Reason : ${response.body}`;
-                throw new Error(errorMessage);
-            }
-        }).catch(reason => {
-            apiResponse.innerHTML = `<p style = 'color:red;'> ${reason} </p>`;
-            postProcessing(url, counter, FAILURE);
-            //postProcessing(url, counter, SUCCESS);
+        }).then(response => {            
+            if (!response.ok) {			
+				const errorMessage = `API call failed. URI : ${url},   Response Status Code : ${response.status},   Reason : ${response.statusText}`;
+				throw new Error(errorMessage); 
+            }			               
+			return response;			           
+        })
+		.then(response => {		 		 
+		 postProcessing(url, counter, SUCCESS);
+		})
+		.catch(reason => {
+			apiResponse.innerHTML = `${prepareStatusMessage(FAILURE, reason)}`;			
+            postProcessing(url, counter, FAILURE);            
         });
     }
 
     function alterButton(flag) {
         const buttons = document.getElementsByTagName('button');
         for (const button of buttons) {
-            if (flag){
-                button.removeAttribute('disabled');
+            if (flag){				
+                button.removeAttribute('disabled');				
             }else{
-                button.setAttribute('disabled','disabled');
+                button.setAttribute('disabled','disabled');				
             }
         }
     }
 
     function postProcessing(url, counter, result) {
         if (result === SUCCESS) {
+			apiResponse.innerHTML = `${prepareStatusMessage(SUCCESS, 'Data Migration was successful')}`;
             document.getElementById(`td-a-${counter}`).innerHTML = '';
         }
-        document.getElementById(`td-s-${counter}`).innerHTML = result;
+        document.getElementById(`td-s-${counter}`).innerHTML = prepareStatusMessage(result, result);
         const updatedItems = getItems(url).map((value, index) => {
             if (index === counter) {
-                value.status = result
+                value.status = result;
             }
             return value;
         })
@@ -229,6 +262,21 @@
     function alert() {
         return  confirm("Do you wan to leave this page?");
     }
+	
+		
+	function prepareStatusMessage(status, reason){				
+		return `<p style ='color:${getClasName(status)}'}> ${reason} </p>`;
+	}
+	
+	function getClasName(status){
+		let clsColor = 'orange';
+		if(status === SUCCESS){
+			clsColor = 'green';
+		}else if(status === FAILURE){
+			clsColor = 'red';
+		}	
+	  return clsColor;
+	}
 
 </script>
 </body>
